@@ -683,9 +683,11 @@ namespace ServiceStack.OrmLite
         public virtual SqlExpression<T> UnsafeOrderBy(string orderBy)
         {
             orderByProperties.Clear();
-            this.orderBy = string.IsNullOrEmpty(orderBy)
-                ? null
-                : "ORDER BY " + orderBy;
+            if (!string.IsNullOrEmpty(orderBy))
+            {
+                orderByProperties.Add(orderBy);
+            }
+            BuildOrderByClauseInternal();
             return this;
         }
 
@@ -2029,7 +2031,12 @@ namespace ServiceStack.OrmLite
         {
             var paramModelDef = p.Type.GetModelDefinition();
             if (paramModelDef != null)
-                return new SelectList(DialectProvider.GetColumnNames(paramModelDef, paramModelDef.ModelName));
+            {
+                var tablePrefix = paramModelDef == ModelDef && TableAlias != null
+                    ? TableAlias
+                    : paramModelDef.ModelName;
+                return new SelectList(DialectProvider.GetColumnNames(paramModelDef, tablePrefix));
+            }
 
             return p.Name;
         }
