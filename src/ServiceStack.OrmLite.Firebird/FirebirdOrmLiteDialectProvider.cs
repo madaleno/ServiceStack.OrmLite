@@ -737,7 +737,7 @@ namespace ServiceStack.OrmLite.Firebird
 //            if (!QuoteNames & !RESERVED.Contains(tableName.ToUpper()))
 //                tableName = tableName.ToUpper();
 
-            var sql = $"SELECT COUNT(*) FROM rdb$relations WHERE rdb$system_flag = 0 AND rdb$view_blr IS NULL AND rdb$relation_name = '{tableName}'";
+            var sql = $"SELECT COUNT(*) FROM RDB$RELATIONS WHERE RDB$SYSTEM_FLAG = 0 AND RDB$VIEW_BLR IS NULL AND RDB$RELATION_NAME = UPPER({tableName})";
 
             var result = dbCmd.ExecLongScalar(sql);
             return result == 1;
@@ -747,12 +747,12 @@ namespace ServiceStack.OrmLite.Firebird
         {
             var table = GetTableName(tableName, schema);
 
-            if (!QuoteNames & !RESERVED.Contains(tableName.ToUpper()))
-                table = table.ToUpper();
+            //if (!QuoteNames & !RESERVED.Contains(tableName.ToUpper()))
+            //    table = table.ToUpper();
 
             var sql = "SELECT COUNT(*) FROM RDB$RELATION_FIELDS "
                     + " WHERE RDB$RELATION_FIELDS.RDB$RELATION_NAME = UPPER(@table)"
-                    + "   AND RDB$RELATION_FIELDS.RDB$FIELD_NAME = UPPER(@columnName)";
+                    + " AND RDB$RELATION_FIELDS.RDB$FIELD_NAME = UPPER(@columnName)";
 
             var result = db.SqlScalar<long>(sql, new { table, columnName });
 
