@@ -1,5 +1,4 @@
-Follow [@ServiceStack](https://twitter.com/servicestack) or join the [Google+ Community](https://plus.google.com/communities/112445368900682590445)
-for updates, or [StackOverflow](http://stackoverflow.com/questions/ask) or the [Customer Forums](https://forums.servicestack.net/) for support.
+Follow [@ServiceStack](https://twitter.com/servicestack) or [view the docs](https://docs.servicestack.net), use [StackOverflow](http://stackoverflow.com/questions/ask) or the [Customer Forums](https://forums.servicestack.net/) for support.
 
 # Fast, Simple, Typed ORM for .NET
 
@@ -864,6 +863,26 @@ var track = db.SingleById<Track>(1);
 var tracks = db.SelectByIds<Track>(new[]{ 1,2,3 });
 ```
 
+## Nested Typed Sub SqlExpressions
+
+The `Sql.In()` API supports nesting and combining of multiple Typed SQL Expressions together 
+in a single SQL Query, e.g:
+  
+```csharp
+var usaCustomerIds = db.From<Customer>(c => c.Country == "USA").Select(c => c.Id);
+var usaCustomerOrders = db.Select(db.From<Order>()
+    .Where(x => Sql.In(x.CustomerId, usaCustomerIds)));
+``` 
+
+### SQL In Expressions
+
+```csharp
+db.Select<Author>(x => Sql.In(x.City, "London", "Madrid", "Berlin"));
+
+var cities = new[] { "London", "Madrid", "Berlin" };
+db.Select<Author>(x => Sql.In(x.City, cities));
+```
+
 ### Parametrized IN Values
 
 OrmLite also supports providing collection of values which is automatically split into multiple DB parameters to simplify executing parameterized SQL with multiple IN Values, e.g:
@@ -874,6 +893,25 @@ var results = db.Select<Table>("Id in (@ids)", new { ids });
 
 var names = new List<string>{ "foo", "bar", "qux" };
 var results = db.SqlList<Table>("SELECT * FROM Table WHERE Name IN (@names)", new { names });
+```
+
+### Custom SQL using PostgreSQL Arrays
+
+If using PostgreSQL you can take advantage of its complex Array Types and utilize its [Array Functions and Operators](https://www.postgresql.org/docs/9.6/functions-array.html), e.g:
+
+```csharp
+var ids = new[]{ 1, 2, 3};
+var q = Db.From<Table>()
+    .Where("ARRAY[{0}] && ref_ids", ids.Join(","))
+var results = db.Select(q);
+```
+
+When comparing a string collection you can use `SqlInValues` to create a quoted SQL IN list, e.g:
+
+```csharp
+var q = Db.From<Table>()
+    .Where($"ARRAY[{new SqlInValues(cities).ToSqlInString()}] && cities");
+var results = db.Select(q);
 ```
 
 ### Lazy Queries
@@ -887,6 +925,23 @@ foreach (var person in lazyQuery) {
    //...  
 }
 ```
+ 
+### Save Methods
+ 
+`Save` and `SaveAll` will Insert if no record with **Id** exists, otherwise it Updates. 
+
+`Save` will populate any `[AutoIncrement]` or `[AutoId]` Primary Keys, e.g:
+
+```csharp
+db.Save(item);
+item.Id // RDBMS populated Auto Id 
+```
+
+Alternatively you can also manually Select and Retrieve the Inserted RDBMS Auto Id in a single query with `Insert` APIs by specifying `selectIdentity:true`:
+
+```csharp
+item.Id = db.Insert(item, selectIdentity:true);
+```
 
 #### Other examples
 
@@ -897,7 +952,6 @@ var topVIPs = db.WhereLazy<Person>(new { Age = 27 }).Where(p => IsVip(p)).Take(5
 ### Other Notes
 
  - All **Insert**, **Update**, and **Delete** methods take multiple params, while `InsertAll`, `UpdateAll` and `DeleteAll` take IEnumerables.
- - `Save` and `SaveAll` will Insert if no record with **Id** exists, otherwise it Updates. 
  - Methods containing the word **Each** return an IEnumerable<T> and are lazily loaded (i.e. non-buffered).
 
 # Features
@@ -1531,7 +1585,7 @@ public class UniqueTest
 
 ### Auto populated Guid Ids
 
-Support for Auto populating `Guid` Primary Keys was also added in this release with the new `[AutoId]` attribute, e.g:
+Support for Auto populating `Guid` Primary Keys is available using the `[AutoId]` attribute, e.g:
 
 ```csharp
 public class Table
@@ -1618,17 +1672,6 @@ var q = db.From<Table>()
 
 var results = db.Select(q);
 ```
-
-## Nested Typed Sub SqlExpressions
-
-The `Sql.In()` API supports nesting and combining of multiple Typed SQL Expressions together 
-in a single SQL Query, e.g:
-  
-```csharp
-var usaCustomerIds = db.From<Customer>(c => c.Country == "USA").Select(c => c.Id);
-var usaCustomerOrders = db.Select(db.From<Order>()
-    .Where(x => Sql.In(x.CustomerId, usaCustomerIds)));
-``` 
 
 ## Optimistic Concurrency
 
@@ -2967,21 +3010,21 @@ The Typed SqlExpression bitwise operations support depends on the RDBMS used.
 E.g. all RDBMS's support Bitwise `And` and `Or` operators:
 
 ```csharp
-db.Select<Table>(x => (x.Id | 2) == 3);
-db.Select<Table>(x => (x.Id & 2) == 2);
+db.Select<Table>(x => (x.Flags | 2) == 3);
+db.Select<Table>(x => (x.Flags & 2) == 2);
 ```
 
 All RDBMS Except for SQL Server support bit shift operators:
 
 ```csharp
-db.Select<Table>(x => (x.Id << 1) == 4);
-db.Select<Table>(x => (x.Id >> 1) == 1);
+db.Select<Table>(x => (x.Flags << 1) == 4);
+db.Select<Table>(x => (x.Flags >> 1) == 1);
 ```
 
 Whilst only SQL Server and MySQL Support Exclusive Or:
 
 ```csharp
-db.Select<Table>(x => (x.Id ^ 2) == 3);
+db.Select<Table>(x => (x.Flags ^ 2) == 3);
 ```
 
 ## SQL Server Features

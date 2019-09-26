@@ -23,7 +23,7 @@ namespace ServiceStack.OrmLite
 {
     public static class OrmLiteWriteCommandExtensions
     {
-        private static readonly ILog Log = LogManager.GetLogger(typeof(OrmLiteWriteCommandExtensions));
+        internal static ILog Log = LogManager.GetLogger(typeof(OrmLiteWriteCommandExtensions));
 
         internal static bool CreateSchema<T>(this IDbCommand dbCmd)
         {
@@ -333,6 +333,8 @@ namespace ServiceStack.OrmLite
         {
             values = PopulateValues(reader, values, dialectProvider);
 
+            var dbNullFilter = OrmLiteConfig.OnDbNullFilter;
+
             foreach (var fieldCache in indexCache)
             {
                 try
@@ -344,12 +346,9 @@ namespace ServiceStack.OrmLite
                     if (values != null && values[index] == DBNull.Value)
                     {
                         var value = fieldDef.IsNullable ? null : fieldDef.FieldTypeDefaultValue;
-                        if (OrmLiteConfig.OnDbNullFilter != null)
-                        {
-                            var useValue = OrmLiteConfig.OnDbNullFilter(fieldDef);
-                            if (useValue != null)
-                                value = useValue;
-                        }
+                        var useValue = dbNullFilter?.Invoke(fieldDef);
+                        if (useValue != null)
+                            value = useValue;
 
                         fieldDef.SetValueFn(objWithProperties, value);
                     }
@@ -360,12 +359,9 @@ namespace ServiceStack.OrmLite
                         {
                             if (!fieldDef.IsNullable)
                                 value = fieldDef.FieldTypeDefaultValue;
-                            if (OrmLiteConfig.OnDbNullFilter != null)
-                            {
-                                var useValue = OrmLiteConfig.OnDbNullFilter(fieldDef);
-                                if (useValue != null)
-                                    value = useValue;
-                            }
+                            var useValue = dbNullFilter?.Invoke(fieldDef);
+                            if (useValue != null)
+                                value = useValue;
                             fieldDef.SetValueFn(objWithProperties, value);
                         }
                         else
@@ -380,6 +376,8 @@ namespace ServiceStack.OrmLite
                     OrmLiteUtils.HandleException(ex);
                 }
             }
+            
+            OrmLiteConfig.PopulatedObjectFilter?.Invoke(objWithProperties);
 
             return objWithProperties;
         }

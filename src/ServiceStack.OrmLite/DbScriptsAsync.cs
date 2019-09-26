@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 using ServiceStack.Data;
 using ServiceStack.Script;
+using ServiceStack.Text;
 
 namespace ServiceStack.OrmLite
 {
@@ -12,6 +14,9 @@ namespace ServiceStack.OrmLite
     
     public class DbScriptsAsync : ScriptMethods
     {
+        private const string DbInfo = "__dbinfo"; // Keywords.DbInfo
+        private const string DbConnection = "__dbconnection"; // useDbConnection global
+
         private IDbConnectionFactory dbFactory;
         public IDbConnectionFactory DbFactory
         {
@@ -21,21 +26,56 @@ namespace ServiceStack.OrmLite
 
         public async Task<IDbConnection> OpenDbConnectionAsync(ScriptScopeContext scope, Dictionary<string, object> options)
         {
+            var dbConn = await OpenDbConnectionFromOptionsAsync(options);
+            if (dbConn != null)
+                return dbConn;
+
+            if (scope.PageResult != null)
+            {
+                if (scope.PageResult.Args.TryGetValue(DbInfo, out var oDbInfo) && oDbInfo is ConnectionInfo dbInfo)
+                    return await DbFactory.OpenDbConnectionAsync(dbInfo);
+
+                if (scope.PageResult.Args.TryGetValue(DbConnection, out var oDbConn) && oDbConn is Dictionary<string, object> globalDbConn)
+                    return await OpenDbConnectionFromOptionsAsync(globalDbConn);
+            }
+
+            return await DbFactory.OpenAsync();
+        }
+
+        public IgnoreResult useDb(ScriptScopeContext scope, Dictionary<string, object> dbConnOptions)
+        {
+            if (dbConnOptions == null)
+            {
+                scope.PageResult.Args.Remove(DbConnection);
+            }
+            else
+            {
+                if (!dbConnOptions.ContainsKey("connectionString") && !dbConnOptions.ContainsKey("namedConnection"))
+                    throw new NotSupportedException(nameof(useDb) + " requires either 'connectionString' or 'namedConnection' property");
+
+                scope.PageResult.Args[DbConnection] = dbConnOptions;
+            }
+            return IgnoreResult.Value;
+        }
+
+        private async Task<IDbConnection> OpenDbConnectionFromOptionsAsync(Dictionary<string, object> options)
+        {
             if (options != null)
             {
                 if (options.TryGetValue("connectionString", out var connectionString))
+                {
                     return options.TryGetValue("providerName", out var providerName)
-                        ? await DbFactory.OpenDbConnectionStringAsync((string)connectionString, (string)providerName) 
-                        : await DbFactory.OpenDbConnectionStringAsync((string)connectionString);
-                
-                if (options.TryGetValue("namedConnection", out var namedConnection))
-                    return await DbFactory.OpenDbConnectionAsync((string)namedConnection);
-            }
-            
-            if (scope.PageResult != null && scope.PageResult.Args.TryGetValue("__dbinfo", out var oDbInfo) && oDbInfo is ConnectionInfo dbInfo) // Keywords.DbInfo
-                return await DbFactory.OpenDbConnectionAsync(dbInfo);
+                        ? await DbFactory.OpenDbConnectionStringAsync((string) connectionString, (string) providerName)
+                        : await DbFactory.OpenDbConnectionStringAsync((string) connectionString);
+                }
 
-            return await DbFactory.OpenAsync();
+                if (options.TryGetValue("namedConnection", out var namedConnection))
+                {
+                    return await DbFactory.OpenDbConnectionStringAsync((string) namedConnection);
+                }
+            }
+
+            return null;
         }
 
         async Task<object> exec<T>(Func<IDbConnection, Task<T>> fn, ScriptScopeContext scope, object options)
@@ -109,6 +149,17 @@ namespace ServiceStack.OrmLite
                         live: args.TryGetValue("live", out var oLive) && oLive is bool b && b,
                         schema: args.TryGetValue("schema", out var oSchema) ? oSchema as string : null), 
                 scope, options);
+
+        public Task<object> dbColumnNames(ScriptScopeContext scope, string tableName) => dbColumnNames(scope, tableName, null);
+        public Task<object> dbColumnNames(ScriptScopeContext scope, string tableName, object options) => 
+            exec(async db => (await db.GetTableColumnsAsync($"SELECT * FROM {sqlQuote(tableName)}")).Select(x => x.ColumnName).ToArray(), scope, options);
+
+        public Task<object> dbColumns(ScriptScopeContext scope, string tableName) => dbColumns(scope, tableName, null);
+        public Task<object> dbColumns(ScriptScopeContext scope, string tableName, object options) => 
+            exec(db => db.GetTableColumnsAsync($"SELECT * FROM {sqlQuote(tableName)}"), scope, options);
+
+        public Task<object> dbDesc(ScriptScopeContext scope, string sql) => dbDesc(scope, sql, null);
+        public Task<object> dbDesc(ScriptScopeContext scope, string sql, object options) => exec(db => db.GetTableColumnsAsync(sql), scope, options);
 
         public string sqlQuote(string name) => OrmLiteConfig.DialectProvider.GetQuotedName(name);
         public string sqlConcat(IEnumerable<object> values) => OrmLiteConfig.DialectProvider.SqlConcat(values);

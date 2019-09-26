@@ -158,7 +158,7 @@ namespace ServiceStack.OrmLite
                     sb.Append(" UNION ");
                 
                 // retain *real* table names and skip using naming strategy
-                sb.AppendLine($"SELECT {OrmLiteUtils.QuotedLiteral(tableName)}, COUNT(*) FROM {dialect.GetTableName(tableName, schemaName, useStrategy:false)}");
+                sb.AppendLine($"SELECT {OrmLiteUtils.QuotedLiteral(tableName)}, COUNT(*) FROM {dialect.GetQuotedTableName(tableName, schemaName, useStrategy:false)}");
             }
 
             var sql = StringBuilderCache.ReturnAndFree(sb);
@@ -414,5 +414,26 @@ namespace ServiceStack.OrmLite
         {
             return dbConn.Exec(dbCmd => dbCmd.LoadSelect<Into, From>(expression, include.GetFieldNames()));
         }
+
+        /// <summary>
+        /// Return ADO.NET reader.GetSchemaTable() in a DataTable
+        /// </summary>
+        /// <param name="dbConn"></param>
+        /// <param name="sql"></param>
+        /// <returns></returns>
+        public static DataTable GetSchemaTable(this IDbConnection dbConn, string sql) => dbConn.Exec(dbCmd => dbCmd.GetSchemaTable(sql));
+        
+        /// <summary>
+        /// Get Table Column Schemas for specified table
+        /// </summary>
+        public static ColumnSchema[] GetTableColumns<T>(this IDbConnection dbConn) => dbConn.Exec(dbCmd => dbCmd.GetTableColumns(typeof(T)));
+        /// <summary>
+        /// Get Table Column Schemas for specified table
+        /// </summary>
+        public static ColumnSchema[] GetTableColumns(this IDbConnection dbConn, Type type) => dbConn.Exec(dbCmd => dbCmd.GetTableColumns(type));
+        /// <summary>
+        /// Get Table Column Schemas for result-set return from specified sql
+        /// </summary>
+        public static ColumnSchema[] GetTableColumns(this IDbConnection dbConn, string sql) => dbConn.Exec(dbCmd => dbCmd.GetTableColumns(sql));
     }
 }

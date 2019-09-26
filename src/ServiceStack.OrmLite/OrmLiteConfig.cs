@@ -133,12 +133,21 @@ namespace ServiceStack.OrmLite
             return dbConn;
         }
 
-        public static void ResetLogFactory(ILogFactory logFactory)
+        public static void ResetLogFactory(ILogFactory logFactory=null)
         {
+            logFactory = logFactory ?? LogManager.LogFactory;
             LogManager.LogFactory = logFactory;
-            OrmLiteResultsFilterExtensions.Log = LogManager.LogFactory.GetLogger(typeof(OrmLiteResultsFilterExtensions));
+            OrmLiteResultsFilterExtensions.Log = logFactory.GetLogger(typeof(OrmLiteResultsFilterExtensions));
+            OrmLiteWriteCommandExtensions.Log = logFactory.GetLogger(typeof(OrmLiteWriteCommandExtensions));
+            OrmLiteReadCommandExtensions.Log = logFactory.GetLogger(typeof(OrmLiteReadCommandExtensions));
+            OrmLiteResultsFilterExtensions.Log = logFactory.GetLogger(typeof(OrmLiteResultsFilterExtensions));
+            OrmLiteUtils.Log = logFactory.GetLogger(typeof(OrmLiteUtils));
+            OrmLiteWriteCommandExtensionsAsync.Log = logFactory.GetLogger(typeof(OrmLiteWriteCommandExtensionsAsync));
+            OrmLiteReadCommandExtensionsAsync.Log = logFactory.GetLogger(typeof(OrmLiteReadCommandExtensionsAsync));
+            OrmLiteResultsFilterExtensionsAsync.Log = logFactory.GetLogger(typeof(OrmLiteResultsFilterExtensionsAsync));
+            OrmLiteConverter.Log = logFactory.GetLogger(typeof(OrmLiteConverter));
         }
-
+        
         public static bool DisableColumnGuessFallback { get; set; }
         public static bool StripUpperInLike { get; set; } 
 #if NETSTANDARD2_0
@@ -182,6 +191,8 @@ namespace ServiceStack.OrmLite
         public static Func<string, string> StringFilter { get; set; }
 
         public static Func<FieldDefinition, object> OnDbNullFilter { get; set; }
+
+        public static Action<object> PopulatedObjectFilter { get; set; }
 
         public static Action<IDbCommand, Exception> ExceptionFilter { get; set; }
 

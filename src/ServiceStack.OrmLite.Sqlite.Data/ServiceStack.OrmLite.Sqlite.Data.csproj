@@ -1,22 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <TargetFrameworks>net45</TargetFrameworks>
-    <AssemblyName>ServiceStack.OrmLite.Sqlite.Windows</AssemblyName>
-    <PackageId>ServiceStack.OrmLite.Sqlite.Windows</PackageId>
-    <Title>OrmLite.Sqlite - Fast, code-first, config-free POCO ORM</Title>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <AssemblyName>ServiceStack.OrmLite.Sqlite</AssemblyName>
+    <PackageId>ServiceStack.OrmLite.Sqlite.Data</PackageId>
+    <RootNamespace>ServiceStack.OrmLite.Sqlite</RootNamespace>
+    <Title>ServiceStack.OrmLite.Sqlite with Microsoft.Data.SQLite</Title>
     <PackageDescription>
-      For cross-platform Sqlite use ServiceStack.OrmLite.Sqlite instead.
-      Light, simple and fast convention-based code-first POCO ORM for SQLite.
-      Support for Creating and Dropping Table Schemas from POCOs, Complex Property types transparently stored in schemaless text blobs in SQLite.
+      .NET Standard 2.0 version of ServiceStack.OrmLite.Sqlite that uses Microsoft.Data.SQLite
     </PackageDescription>
-    <PackageTags>SQLite;Windows;OrmLite;RDBMS;SQL;POCO;Code-First;ORM;Schema-less;Blobs</PackageTags>
+    <PackageTags>SQLite;OrmLite;RDBMS;SQL;POCO;Code-First;ORM;Schema-less;Blobs</PackageTags>
     <DefineConstants>$(DefineConstants);ASYNC</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.111" />
     <ProjectReference Include="..\ServiceStack.OrmLite\ServiceStack.OrmLite.csproj" />
     <PackageReference Include="ServiceStack.Common" Version="$(Version)" />
+	<PackageReference Include="Microsoft.Data.SQLite" Version="3.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,6 +40,9 @@
     </Compile>
     <Compile Include="..\ServiceStack.OrmLite.Sqlite\Converters\SqliteStringConverters.cs">
       <Link>Converters\SqliteStringConverters.cs</Link>
+    </Compile>
+    <Compile Include="..\ServiceStack.OrmLite.Sqlite\SqliteDialect.cs">
+      <Link>SqliteDialect.cs</Link>
     </Compile>
     <Compile Include="..\ServiceStack.OrmLite.Sqlite\SqliteExpression.cs">
       <Link>SqliteExpression.cs</Link>
